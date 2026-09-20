@@ -2,6 +2,9 @@ from typing import Iterator
 import re
 import pandas as pd
 from pydantic import BaseModel, Field, ValidationError
+import pypdf
+import io
+
 
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, StructField, StringType, BooleanType
@@ -40,8 +43,13 @@ def parse_partition(iterator: Iterator[pd.DataFrame]) -> Iterator[pd.DataFrame]:
             path = row["path"]
             raw_bytes = row["content"]
             try:
-                decoded = raw_bytes.decode("utf-8", errors="ignore").strip()
-                results.append({"file_path": path, "raw_text": decoded})
+                # decoded = raw_bytes.decode("utf-8", errors="ignore").strip()
+                with io.BytesIO(raw_bytes) as pdf_stream:
+                    reader = pypdf.PdfReader(pdf_stream)
+                    pages = [page.extract_text() or "" for page in reader.pages]
+                    full_text = "\n".join(pages).strip()
+
+                results.append({"file_path": path, "raw_text": full_text})
             except Exception as e:
                 results.append({"file_path": path, "raw_text": f"PARSE_ERROR: {str(e)}"})
         yield pd.DataFrame(results)
