@@ -11,13 +11,13 @@ from pyspark.sql.types import StructType, StructField, StringType, BooleanType
 import pyspark.sql.functions as F
 
 
-# --- 1. KONTRAKT PYDANTIC (Weryfikowany wewnątrz workerów) ---
+# --- 1. data contract PYDANTIC (verified inside workers) ---
 class ValidatedChunk(BaseModel):
     file_path: str = Field(..., min_length=3)
     cleaned_text: str = Field(..., min_length=20)
 
 
-# --- 2. UDF DO CZYSZCZENIA (Arrow / pandas_udf) ---
+# --- 2. UDF for text cleaning (Arrow / pandas_udf) ---
 @F.pandas_udf(StringType())
 def clean_text_udf(texts: pd.Series) -> pd.Series:
     def strip_artifacts(val: str) -> str:
@@ -30,32 +30,71 @@ def clean_text_udf(texts: pd.Series) -> pd.Series:
     return texts.fillna("").apply(strip_artifacts)
 
 
-# --- 3. PARSOWANIE PARTYCJI (mapInPandas) ---
+# --- 3. Processes batches/partitions of PDF files. (mapInPandas) ---
 parser_schema = StructType([
     StructField("file_path", StringType(), False),
-    StructField("raw_text", StringType(), False)
+    StructField("raw_text", StringType(), True),
+    StructField("parse_success", BooleanType(), False),
+    StructField("parse_error", StringType(), True),
 ])
-
+# PDF bytes → readable PDF stream → extracted text
 def parse_partition(iterator: Iterator[pd.DataFrame]) -> Iterator[pd.DataFrame]:
     for batch_df in iterator:
         results = []
         for _, row in batch_df.iterrows():
             path = row["path"]
             raw_bytes = row["content"]
+
+            if not raw_bytes:
+                results.append({
+                    "file_path": path,
+                    "raw_text": None,
+                    "parse_success": False,
+                    "parse_error": "EMPTY_FILE"
+                })
+                continue
+
+            if not bytes(raw_bytes).startswith(b"%PDF-"):
+                results.append({
+                    "file_path": path,
+                    "raw_text": None,
+                    "parse_success": False,
+                    "parse_error": "INVALID_PDF"
+                })
+                continue
             try:
-                # decoded = raw_bytes.decode("utf-8", errors="ignore").strip()
                 with io.BytesIO(raw_bytes) as pdf_stream:
                     reader = pypdf.PdfReader(pdf_stream)
                     pages = [page.extract_text() or "" for page in reader.pages]
                     full_text = "\n".join(pages).strip()
 
-                results.append({"file_path": path, "raw_text": full_text})
+                if not full_text:
+                    results.append({
+                        "file_path": path,
+                        "raw_text": None,
+                        "parse_success": False,
+                        "parse_error": "NO_TEXT"
+                    })
+                    continue
+
+                results.append({
+                    "file_path": path,
+                    "raw_text": full_text,
+                    "parse_success": True,
+                    "parse_error": None
+                })
+
             except Exception as e:
-                results.append({"file_path": path, "raw_text": f"PARSE_ERROR: {str(e)}"})
-        yield pd.DataFrame(results)
+                results.append({
+                    "file_path": path,
+                    "raw_text": None,
+                    "parse_success": False,
+                    "parse_error": f"PARSE_ERROR: {str(e)}"
+                })
 
+            yield pd.DataFrame(results)
 
-# --- 4. ROZPROSZONA WALIDACJA PYDANTIC (mapInPandas) ---
+# --- 4. validate_partition PYDANTIC (mapInPandas) ---
 validation_schema = StructType([
     StructField("file_path", StringType(), False),
     StructField("cleaned_text", StringType(), False),
