@@ -89,3 +89,11 @@ import io
 
 **Status:** Resolved
 
+
+## 4. Duplicate rows in parse_partition()
+**Cause:**  yield was inside the row loop, emitting accumulated results repeatedly.
+
+**Fix:** Move yield pd.DataFrame(results) outside the inner loop.
+
+**Status:** Resolved
+
