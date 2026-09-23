@@ -92,7 +92,7 @@ def parse_partition(iterator: Iterator[pd.DataFrame]) -> Iterator[pd.DataFrame]:
                     "parse_error": f"PARSE_ERROR: {str(e)}"
                 })
 
-            yield pd.DataFrame(results)
+        yield pd.DataFrame(results)
 
 # --- 4. validate_partition PYDANTIC (mapInPandas) ---
 validation_schema = StructType([
