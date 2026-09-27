@@ -7,11 +7,25 @@ from pyspark.sql.types import (
 )
 
 
-class ValidatedChunk(BaseModel):
+class ValidatedDocument(BaseModel):
     """Data contract for successfully processed PDF content."""
 
     file_path: str = Field(..., min_length=3)
     cleaned_text: str = Field(..., min_length=20)
+
+#   kz 2026/27/09 ValidatedChunk added
+
+class ValidatedChunk(BaseModel):
+    """Data contract for a validated text chunk."""
+
+    document_id: str = Field(..., min_length=1)
+    file_path: str = Field(..., min_length=3)
+    chunk_id: int = Field(..., ge=0)
+    text: str = Field(..., min_length=20)
+
+#   kz 2026/27/09 embedding tba later
+# class EmbeddedChunk(ValidatedChunk):
+#     embedding: list[float]
 
 
 parser_schema = StructType([

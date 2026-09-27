@@ -7,6 +7,7 @@ from app.schemas import parser_schema, validation_schema
 from app.validator import validate_partition
 from app.validator import validate_ingestion
 from app.validator import validate_parsed_output
+from app.chunker import chunk_document
 
 import os
 INPUT_PATH = os.getenv("INPUT_PATH", "data/input")

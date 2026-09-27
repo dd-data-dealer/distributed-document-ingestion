@@ -6,7 +6,7 @@ from pydantic import ValidationError
 from pyspark.sql import DataFrame
 import pyspark.sql.functions as F
 
-from app.schemas import ValidatedChunk
+from app.schemas import ValidatedDocument
 
 # validator.py
 def validate_ingestion(raw_df):
@@ -33,7 +33,7 @@ def validate_partition(
 
             try:
                 # Validate each record on the Spark executor.
-                ValidatedChunk.model_validate(payload)
+                ValidatedDocument.model_validate(payload)
 
                 validated_batch.append({
                     **payload,
