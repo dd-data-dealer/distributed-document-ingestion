@@ -5,6 +5,8 @@ from app.cleaner import clean_text_udf
 from app.parser import parse_partition
 from app.schemas import parser_schema, validation_schema
 from app.validator import validate_partition
+from app.validator import validate_ingestion
+from app.validator import validate_parsed_output
 
 import os
 INPUT_PATH = os.getenv("INPUT_PATH", "data/input")
@@ -28,6 +30,10 @@ def main():
         .load(INPUT_PATH)
     )
 
+    # CHECK 2: Validate ingestion structure.
+
+    validate_ingestion(raw_df)
+
     # 2. Parse PDFs into raw text on Spark executors.
     parsed_df = (
         raw_df
@@ -37,6 +43,9 @@ def main():
             schema=parser_schema,
         )
     )
+
+    # CHECK 4: Validate parser output contract.
+    validate_parsed_output(parsed_df)
 
     # 3. Clean extracted text using an Arrow-based Pandas UDF.
     cleaned_df = parsed_df.withColumn(
@@ -76,10 +85,16 @@ def main():
         .mode("append")
         .parquet(f"{OUTPUT_PATH}/dlq_failed/")
     )
+    # temp for tests s
+    valid_df = spark.read.parquet("/app/data/output/valid_chunks/")
+    valid_df.select("file_path").show(truncate=False)
+
+    dlq_df = spark.read.parquet("/app/data/output/dlq_failed/")
+    dlq_df.select("file_path", "dlq_reason").show(truncate=False)
+    # temp for tests e
 
     validated_df.unpersist()
     spark.stop()
-
 
 if __name__ == "__main__":
     main()
