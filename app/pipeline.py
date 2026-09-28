@@ -96,6 +96,17 @@ def main():
         chunk_partition,
         schema=CHUNK_SCHEMA
     )
+    print(f"Verify that chunk_id increments (0, 1, 2...), "
+          f"chunks from the same PDF share the same document_id, "
+          f"text looks sensible, and there are no empty chunks.")
+    
+    chunks_df.select(
+        "document_id",
+        "file_path",
+        "chunk_id",
+        "text"
+    ).show(10, truncate=100)
+
     print(f"Chunk count: {chunks_df.count()}")
 
     validated_df.unpersist()
