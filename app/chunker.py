@@ -1,4 +1,7 @@
 from app.schemas import ValidatedChunk
+from typing import Iterator
+import pandas as pd
+import hashlib
 
 def chunk_text(text, chunk_size=600, overlap=75) -> list[str]:
 
@@ -45,3 +48,30 @@ def chunk_document(document_id, file_path, text):
         results.append(validated_chunk)
 
     return results
+
+def chunk_partition(
+    iterator: Iterator[pd.DataFrame],
+) -> Iterator[pd.DataFrame]:
+    """Parse PDF files from Spark partitions into raw text."""
+
+    for batch_df in iterator:
+        results = []
+
+        for _, row in batch_df.iterrows():
+            file_path = row["file_path"]
+            text = row["cleaned_text"]
+
+            # machine - friendly stable identifier
+            doc_id = hashlib.sha256(
+                file_path.encode("utf-8")
+            ).hexdigest()
+
+            chunks=chunk_document(doc_id,file_path,text)
+            # KZ 28.09.2026 func_description.md 1. Converting Pydantic Objects to Dictionaries
+            results.extend(
+                chunk.model_dump()
+                for chunk in chunks
+            )
+
+        # Return one DataFrame per processed batch.
+        yield pd.DataFrame(results)

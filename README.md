@@ -69,14 +69,20 @@ REAL readable text
 CHECK 4 — Parsed output validation
  ↓ 
 Text cleaning
- ↓
+   |
+   v
 Record-level validation
- ↓
- ┌───────────────┴───────────────┐
- ↓                               ↓
-Valid                           Invalid
- ↓                               ↓
-Parquet                         DLQ
+   |
+   +-----------------------------+
+   |                             |
+   v                             v
+Valid documents              Invalid documents
+   |                             |
+   v                             v
+Chunking                       DLQ
+   |
+   v
+Parquet
 
 ```
 

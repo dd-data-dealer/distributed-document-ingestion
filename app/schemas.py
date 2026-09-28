@@ -4,6 +4,7 @@ from pyspark.sql.types import (
     StructField,
     StringType,
     BooleanType,
+    IntegerType
 )
 
 
@@ -41,4 +42,11 @@ validation_schema = StructType([
     StructField("cleaned_text", StringType(), False),
     StructField("is_valid", BooleanType(), False),
     StructField("dlq_reason", StringType(), True),
+])
+
+CHUNK_SCHEMA = StructType([
+    StructField("document_id", StringType(), False),
+    StructField("file_path", StringType(), False),
+    StructField("chunk_id", IntegerType(), False),
+    StructField("text", StringType(), False),
 ])
