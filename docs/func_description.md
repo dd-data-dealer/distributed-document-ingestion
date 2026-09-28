@@ -69,3 +69,87 @@ pd.DataFrame(results)
       v
 Spark DataFrame via mapInPandas
 ```
+
+### 1. Embeddings
+
+1. Adding data contract
+
+```python
+
+class EmbeddedChunk(ValidatedChunk):
+    embedding: list[float]
+```
+getting
+```text
+
+ValidatedChunk
+{
+    document_id
+    file_path
+    chunk_id
+    text
+}
+        ↓
+embedding
+        ↓
+EmbeddedChunk
+{
+    document_id
+    file_path
+    chunk_id
+    text
+    embedding
+}
+```
+
+2. Model selection
+```text
+
+BAAI/bge-small-en-v1.5
+
+```
+It produces 384-dimensional embeddings, is small enough for your local setup, and you've already encountered this model before.
+
+3. embedder.py
+```python
+
+from sentence_transformers import SentenceTransformer
+
+MODEL_NAME = "BAAI/bge-small-en-v1.5"
+
+def embed_texts(texts: list[str]):
+```
+embedding in batch:
+```text
+
+[
+ chunk1,
+ chunk2,
+ chunk3,
+ ...
+]
+       ↓
+     model
+       ↓
+[
+ embedding1,
+ embedding2,
+ embedding3,
+ ...
+]
+```
+4. spark aapter
+
+```text
+parser.py
+parse_partition()
+
+chunker.py
+chunk_text()
+chunk_document()
+chunk_partition()
+
+embedder.py
+embed_texts()
+embed_partition()
+```
