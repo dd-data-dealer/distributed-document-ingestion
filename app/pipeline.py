@@ -3,9 +3,10 @@ import pyspark.sql.functions as F
 
 from app.cleaner import clean_text_udf
 from app.parser import parse_partition
-from app.schemas import parser_schema, validation_schema, CHUNK_SCHEMA
+from app.schemas import parser_schema, validation_schema, CHUNK_SCHEMA, EMBEDDING_SCHEMA
 from app.validator import validate_partition, validate_ingestion, validate_parsed_output
 from app.chunker import chunk_document, chunk_partition
+from app.embedder import embed_partition
 
 import os
 INPUT_PATH = os.getenv("INPUT_PATH", "data/input")
@@ -96,16 +97,47 @@ def main():
         chunk_partition,
         schema=CHUNK_SCHEMA
     )
-    print(f"Verify that chunk_id increments (0, 1, 2...), "
-          f"chunks from the same PDF share the same document_id, "
-          f"text looks sensible, and there are no empty chunks.")
-    
-    chunks_df.select(
+    # print(f"Verify that chunk_id increments (0, 1, 2...), "
+    #       f"chunks from the same PDF share the same document_id, "
+    #       f"text looks sensible, and there are no empty chunks.")
+    #
+    # chunks_df.select(
+    #     "document_id",
+    #     "file_path",
+    #     "chunk_id",
+    #     "text"
+    # ).show(10, truncate=100)
+
+    embedded_df = chunks_df.mapInPandas(
+        embed_partition,
+        schema=EMBEDDING_SCHEMA
+    )
+    #  29 09 2026 embdedding check
+
+    # 1. Check number of embedded chunks
+    print(f"Embedded chunk count: {embedded_df.count()}")
+
+    # 2. Inspect a few results
+    embedded_df.select(
         "document_id",
-        "file_path",
         "chunk_id",
-        "text"
-    ).show(10, truncate=100)
+        "text",
+        "embedding"
+    ).show(3, truncate=False)
+
+    # 3. Check embedding dimensions
+    embedded_df.selectExpr(
+        "chunk_id",
+        "size(embedding) AS embedding_dimension"
+    ).show(5)
+
+    # 4. Check for missing embeddings
+    missing_embeddings = embedded_df.filter(
+        "embedding IS NULL OR size(embedding) = 0"
+    ).count()
+
+    print(f"Missing embeddings: {missing_embeddings}")
+    # end embedding text
 
     print(f"Chunk count: {chunks_df.count()}")
 

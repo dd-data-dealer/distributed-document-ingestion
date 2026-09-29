@@ -4,7 +4,9 @@ from pyspark.sql.types import (
     StructField,
     StringType,
     BooleanType,
-    IntegerType
+    IntegerType,
+    ArrayType,
+    FloatType
 )
 
 
@@ -50,3 +52,16 @@ CHUNK_SCHEMA = StructType([
     StructField("chunk_id", IntegerType(), False),
     StructField("text", StringType(), False),
 ])
+
+
+EMBEDDING_SCHEMA = StructType([
+    StructField("document_id", StringType(), False),
+    StructField("file_path", StringType(), False),
+    StructField("chunk_id", IntegerType(), False),
+    StructField("text", StringType(), False),
+    StructField("embedding", ArrayType(FloatType()), False),
+])
+
+
+class EmbeddedChunk(ValidatedChunk):
+    embedding: list[float]
