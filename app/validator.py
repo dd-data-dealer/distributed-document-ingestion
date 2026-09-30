@@ -6,7 +6,7 @@ from pydantic import ValidationError
 from pyspark.sql import DataFrame
 import pyspark.sql.functions as F
 
-from app.schemas import ValidatedDocument
+from .schemas import ValidatedDocument
 
 # validator.py
 def validate_ingestion(raw_df):

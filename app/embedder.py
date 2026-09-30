@@ -1,5 +1,5 @@
 from sentence_transformers import SentenceTransformer
-from app.schemas import EmbeddedChunk
+from .schemas import EmbeddedChunk
 from typing import Iterator
 import pandas as pd
 

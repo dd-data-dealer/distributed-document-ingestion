@@ -1,16 +1,22 @@
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
 
-from app.cleaner import clean_text_udf
-from app.parser import parse_partition
-from app.schemas import parser_schema, validation_schema, CHUNK_SCHEMA, EMBEDDING_SCHEMA
-from app.validator import validate_partition, validate_ingestion, validate_parsed_output
-from app.chunker import chunk_document, chunk_partition
-from app.embedder import embed_partition
+from .cleaner import clean_text_udf
+from .parser import parse_partition
+from .schemas import parser_schema, validation_schema, CHUNK_SCHEMA, EMBEDDING_SCHEMA
+from .validator import validate_partition, validate_ingestion, validate_parsed_output
+from .chunker import chunk_document, chunk_partition
+from .embedder import embed_partition
 
 import os
-INPUT_PATH = os.getenv("INPUT_PATH", "data/input")
-OUTPUT_PATH = os.getenv("INPUT_PATH", "data/output")
+from pathlib import Path
+
+# Points to the 'pdf-pipeline-w1-t1' folder
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+# Default to relative paths anchored to the project folder
+INPUT_PATH = os.getenv("INPUT_PATH", str(PROJECT_ROOT / "data" / "input"))
+OUTPUT_PATH = os.getenv("OUTPUT_PATH", str(PROJECT_ROOT / "data" / "output"))
 
 
 def main():
@@ -19,7 +25,10 @@ def main():
     spark = (
         SparkSession.builder
         .appName("AIDataEngineering-ProductionPipeline")
-        .config("spark.sql.execution.arrow.pyspark.enabled", "true")
+        .master("local[*]")
+        .config("spark.driver.host", "127.0.0.1")
+        .config("spark.driver.bindAddress", "127.0.0.1")
+        # .config("spark.sql.execution.arrow.pyspark.enabled", "true")
         .getOrCreate()
     )
 
@@ -72,7 +81,7 @@ def main():
         .filter(F.col("is_valid"))
         .select("file_path", "cleaned_text")
         .write
-        .mode("append")
+        .mode("overwrite")
         .parquet(f"{OUTPUT_PATH}/valid_chunks")
     )
 
@@ -82,14 +91,14 @@ def main():
         .filter(~F.col("is_valid"))
         .select("file_path", "cleaned_text", "dlq_reason")
         .write
-        .mode("append")
+        .mode("overwrite")
         .parquet(f"{OUTPUT_PATH}/dlq_failed/")
     )
     # temp for tests s
-    valid_df = spark.read.parquet("/app/data/output/valid_chunks/")
+    valid_df = spark.read.parquet(f"{OUTPUT_PATH}/valid_chunks/")
     valid_df.select("file_path").show(truncate=False)
     #
-    # dlq_df = spark.read.parquet("/app/data/output/dlq_failed/")
+    # dlq_df = spark.read.parquet(f"{OUTPUT_PATH}/dlq_failed/")
     # dlq_df.select("file_path", "dlq_reason").show(truncate=False)
     # temp for tests e
     # NEXT TESTS STAGE: CHUNKING
@@ -112,10 +121,17 @@ def main():
         embed_partition,
         schema=EMBEDDING_SCHEMA
     )
+
+    embedded_df.write \
+        .mode("overwrite") \
+        .parquet(f"{OUTPUT_PATH}/embeddings/")
     #  29 09 2026 embdedding check
 
     # 1. Check number of embedded chunks
     print(f"Embedded chunk count: {embedded_df.count()}")
+
+    # not need as we already created embedded_df
+    # embeddings_check = spark.read.parquet(EMBEDDINGS_OUTPUT_PATH)
 
     # 2. Inspect a few results
     embedded_df.select(

@@ -1,4 +1,4 @@
-from app.schemas import ValidatedChunk
+from .schemas import ValidatedChunk
 from typing import Iterator
 import pandas as pd
 import hashlib
