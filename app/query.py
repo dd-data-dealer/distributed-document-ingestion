@@ -25,7 +25,7 @@ chunks = [
 ]
 
 
-query = "What meals contain chicken?"
+query = "Jaki posiłek zawiera kurczaka?"
 
 results = retrieve(
     query=query,

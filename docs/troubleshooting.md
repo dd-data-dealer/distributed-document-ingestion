@@ -97,3 +97,15 @@ import io
 
 **Status:** Resolved
 
+## 5. Spark Python worker crashes during embedding
+
+**Cause**: SentenceTransformer was initialized globally when embedder.py was imported, causing each Spark Python worker to initialize the model during module import. With multiple local workers (local[*]), several model instances could be created concurrently. Additionally, SentenceTransformer attempted to use Apple Metal/MPS inside Spark workers, causing AGXMetal / XPC_ERROR_CONNECTION_INVALID errors. Spark initially reported these crashes only as Connection reset, EOFException, or Python worker exited unexpectedly.
+
+**Fix**: 
+1. Change Spark from local[*] to local[1] during local development to run one Spark task at a time and avoid multiple workers loading the ML model concurrently.
+
+2. Replace global model initialization with lazy initialization using get_model(), so the model is loaded once inside each Spark worker when it is actually needed and then reused.
+
+3. Explicitly set device="cpu" in SentenceTransformer to prevent PyTorch from using Apple Metal/MPS inside Spark workers.
+**Status**: Resolved
+

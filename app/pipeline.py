@@ -25,7 +25,7 @@ def main():
     spark = (
         SparkSession.builder
         .appName("AIDataEngineering-ProductionPipeline")
-        .master("local[*]")
+        .master("local[1]")
         .config("spark.driver.host", "127.0.0.1")
         .config("spark.driver.bindAddress", "127.0.0.1")
         # .config("spark.sql.execution.arrow.pyspark.enabled", "true")
@@ -106,16 +106,21 @@ def main():
         chunk_partition,
         schema=CHUNK_SCHEMA
     )
-    # print(f"Verify that chunk_id increments (0, 1, 2...), "
-    #       f"chunks from the same PDF share the same document_id, "
-    #       f"text looks sensible, and there are no empty chunks.")
-    #
-    # chunks_df.select(
-    #     "document_id",
-    #     "file_path",
-    #     "chunk_id",
-    #     "text"
-    # ).show(10, truncate=100)
+    # 1.10 KZ here temp turned ON
+
+    print(f"Verify that chunk_id increments (0, 1, 2...), "
+          f"chunks from the same PDF share the same document_id, "
+          f"text looks sensible, and there are no empty chunks.")
+
+    chunks_df.select(
+        "document_id",
+        "file_path",
+        "chunk_id",
+        "text"
+    ).show(10, truncate=True)
+    # TRUNCATE 100
+
+    # # 1.10 KZ here temp turned off
 
     embedded_df = chunks_df.mapInPandas(
         embed_partition,
@@ -127,12 +132,12 @@ def main():
         .parquet(f"{OUTPUT_PATH}/embeddings/")
     #  29 09 2026 embdedding check
 
-    # 1. Check number of embedded chunks
-    print(f"Embedded chunk count: {embedded_df.count()}")
-
-    # not need as we already created embedded_df
-    # embeddings_check = spark.read.parquet(EMBEDDINGS_OUTPUT_PATH)
-
+    # # 1. Check number of embedded chunks
+    # print(f"Embedded chunk count: {embedded_df.count()}")
+    #
+    # # not need as we already created embedded_df
+    # # embeddings_check = spark.read.parquet(EMBEDDINGS_OUTPUT_PATH)
+    #
     # 2. Inspect a few results
     embedded_df.select(
         "document_id",
@@ -140,22 +145,22 @@ def main():
         "text",
         "embedding"
     ).show(3, truncate=False)
-
-    # 3. Check embedding dimensions
-    embedded_df.selectExpr(
-        "chunk_id",
-        "size(embedding) AS embedding_dimension"
-    ).show(5)
-
-    # 4. Check for missing embeddings
-    missing_embeddings = embedded_df.filter(
-        "embedding IS NULL OR size(embedding) = 0"
-    ).count()
-
-    print(f"Missing embeddings: {missing_embeddings}")
-    # end embedding text
-
-    print(f"Chunk count: {chunks_df.count()}")
+    #
+    # # 3. Check embedding dimensions
+    # embedded_df.selectExpr(
+    #     "chunk_id",
+    #     "size(embedding) AS embedding_dimension"
+    # ).show(5)
+    #
+    # # 4. Check for missing embeddings
+    # missing_embeddings = embedded_df.filter(
+    #     "embedding IS NULL OR size(embedding) = 0"
+    # ).count()
+    #
+    # print(f"Missing embeddings: {missing_embeddings}")
+    # # end embedding text
+    #
+    # print(f"Chunk count: {chunks_df.count()}")
 
     validated_df.unpersist()
     spark.stop()
