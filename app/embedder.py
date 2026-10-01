@@ -1,14 +1,26 @@
 from sentence_transformers import SentenceTransformer
-from app.schemas import EmbeddedChunk
+from .schemas import EmbeddedChunk
 from typing import Iterator
 import pandas as pd
 
 
-MODEL_NAME = "BAAI/bge-small-en-v1.5"
-model = SentenceTransformer(MODEL_NAME)
+MODEL_NAME = "intfloat/multilingual-e5-small"
+# model = SentenceTransformer(MODEL_NAME)
+# KZ 1.10 lazy initialization WAS inside the worker process, not it gives us once per Python worker:
+_model = None
 
+def get_model():
+    global _model
+
+    if _model is None:
+        _model = SentenceTransformer(
+            MODEL_NAME,
+            device="cpu")
+
+    return _model
 
 def embed_texts(texts: list[str]):
+    model = get_model()
     embeddings = model.encode(
         texts,
         batch_size=32,

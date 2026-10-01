@@ -79,12 +79,42 @@ Record-level validation
 Valid documents              Invalid documents
    |                             |
    v                             v
-Chunking                       DLQ
+Chunking  ----> Parguet         DLQ
    |
+   v
+Embedding                       DLQ
+   |
+   v
    v
 Parquet
 
 ```
 
+****RETRIEVAL IS SEPARATED****
+
+```text
+
 Failure strategy: individual bad documents should not stop the batch, while violations of the pipeline's structural contract should fail fast.
+Retrieval is executed separately:
+
+User query
+   ↓
+`query.py`
+   ↓
+Load stored embeddings
+   ↓
+`retrieval.py`
+   ↓
+Embed query
+   ↓
+Cosine similarity
+   ↓
+Top-K relevant chunks
+
+`pipeline.py` is responsible for preparing and storing the document data.
+
+`retrieval.py` contains the retrieval logic, including cosine similarity and Top-K selection.
+
+`query.py` is the retrieval entry point. It loads the previously generated embeddings and calls the retrieval functions without rerunning the ingestion pipeline.
+```
 # distributed-document-ingestion

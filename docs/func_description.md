@@ -132,25 +132,24 @@ The Pydantic model validates Python objects inside the application, while the Sp
 ---
 
 #### 2.1. Model selection
+
+***ONLY ENGLISH SUPPORTED***
 ```text
 
 BAAI/bge-small-en-v1.5
 
 ```
+
 It produces 384-dimensional embeddings, is small enough for your local setup, and you've already encountered this model before.
 
 #### 2.2. `embed_texts()` — batch inference
 
-The embedding model is:
-
-```text
-BAAI/bge-small-en-v1.5
-```
-
-It produces 384-dimensional vectors.
-
 `embed_texts()` receives multiple texts and embeds them in batches:
 
+
+***!!!! IT WAS WRONG !!!!***
+
+old:
 ```python
 def embed_texts(texts: list[str]) -> list[list[float]]:
     embeddings = model.encode(
@@ -162,6 +161,7 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
 
     return embeddings.tolist()
 ```
+end old
 
 ```text
 [chunk1, chunk2, chunk3]
@@ -258,3 +258,190 @@ Embedding is kept separate from chunking so each stage has one responsibility:
 ```text
 chunk_partition()  -> document -> chunks
 embed_partition()  -> chunks -> chunks + embeddings
+```
+
+The embedding model is not initialized directly when `embedder.py` is imported. Instead, it is loaded lazily using `get_model()`:
+
+```python
+MODEL_NAME = "intfloat/multilingual-e5-small"
+_model = None
+
+
+def get_model():
+    global _model
+
+    if _model is None:
+        _model = SentenceTransformer(
+            MODEL_NAME,
+            device="cpu"
+        )
+
+    return _model
+```
+
+Spark Python workers run as separate processes and do not share Python memory. Therefore, one model instance created by the driver cannot simply be shared by all workers.
+
+Using `_model = None` delays model initialization until a worker actually needs to generate embeddings.
+
+The first call to `get_model()` creates the model:
+
+```text
+_model = None
+      |
+      v
+get_model()
+      |
+      v
+_model is None
+      |
+      v
+SentenceTransformer(...)
+      |
+      v
+model stored in _model
+```
+
+Later calls from the same Python worker reuse the already initialized model instead of loading it again:
+
+```text
+Spark Python Worker
+      |
+      v
+get_model()
+      |
+      v
+Load model once
+      |
+      +----> embed batch 1
+      +----> embed batch 2
+      +----> embed batch 3
+```
+
+The model uses `device="cpu"` explicitly because Apple Metal/MPS caused crashes when the model was initialized inside Spark Python workers on macOS.
+
+For Polish documents, `intfloat/multilingual-e5-small` is used because it is a multilingual embedding model suitable for semantic retrieval across languages, including Polish.
+
+
+
+
+The `embed_texts()` function converts a list of text chunks into embedding vectors:
+
+```python
+def embed_texts(texts: list[str]):
+    model = get_model()
+
+    embeddings = model.encode(
+        texts,
+        batch_size=32,
+        normalize_embeddings=True,
+        show_progress_bar=False,
+    )
+
+    return embeddings.tolist()
+```
+
+Instead of encoding every chunk separately, the function sends multiple texts to the model as a batch:
+
+```text
+["chunk 1", "chunk 2", "chunk 3"]
+              |
+              v
+        model.encode()
+              |
+              v
+[embedding 1, embedding 2, embedding 3]
+```
+
+`batch_size=32` allows the model to process several chunks together, which is more efficient than calling the model separately for every row.
+
+`normalize_embeddings=True` normalizes each vector to length 1, making the embeddings suitable for similarity calculations such as cosine similarity.
+
+`embeddings.tolist()` converts the NumPy output returned by SentenceTransformer into standard Python lists that can be stored in Spark using `ArrayType(FloatType())`.
+
+
+
+
+The `embed_partition()` function connects Spark processing with the embedding model:
+
+```python
+def embed_partition(iterator: Iterator[pd.DataFrame]) -> Iterator[pd.DataFrame]:
+    for batch_df in iterator:
+        results = []
+
+        txt_for_embedding = batch_df["text"].tolist()
+        embeddings = embed_texts(txt_for_embedding)
+
+        for (, row), embedding in zip(batch_df.iterrows(), embeddings):
+            embedded_chunk = EmbeddedChunk(
+                document_id=row["document_id"],
+                file_path=row["file_path"],
+                chunk_id=row["chunk_id"],
+                text=row["text"],
+                embedding=embedding,
+            )
+
+            results.append(embedded_chunk.model_dump())
+
+        yield pd.DataFrame(results)
+```
+
+Spark passes batches of chunk rows to `embed_partition()` through `mapInPandas`.
+
+First, the text column is extracted from the Pandas batch:
+
+```python
+txt_for_embedding = batch_df["text"].tolist()
+```
+
+All texts in the batch are embedded together:
+
+```python
+embeddings = embed_texts(txt_for_embedding)
+```
+
+`zip()` then reconnects each original chunk with its corresponding embedding:
+
+```python
+for (, row), embedding in zip(batch_df.iterrows(), embeddings):
+```
+
+Each result is validated using the `EmbeddedChunk` Pydantic model and converted to a dictionary using `model_dump()` before creating the output Pandas DataFrame.
+
+The complete flow is:
+
+```text
+Spark chunks DataFrame
+        |
+        v
+mapInPandas(embed_partition)
+        |
+        v
+Pandas batch
+        |
+        v
+extract text column
+        |
+        v
+embed_texts()
+        |
+        v
+get_model()
+        |
+        v
+SentenceTransformer
+        |
+        v
+embedding vectors
+        |
+        v
+EmbeddedChunk validation
+        |
+        v
+model_dump()
+        |
+        v
+pd.DataFrame(results)
+        |
+        v
+Spark embeddings DataFrame
+```
