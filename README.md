@@ -110,6 +110,10 @@ Embed query
 Cosine similarity
    ↓
 Top-K relevant chunks
+   ↓
+LLM + retrieved context
+   ↓
+clean, grounded answer
 
 `pipeline.py` is responsible for preparing and storing the document data.
 
