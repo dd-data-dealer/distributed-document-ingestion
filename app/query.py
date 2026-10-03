@@ -1,6 +1,8 @@
 from pyspark.sql import SparkSession
 
 from .retrieval import retrieve
+from .rag import generate_recipe
+
 import os
 from pathlib import Path
 
@@ -15,6 +17,9 @@ EMBEDDINGS_PATH = os.path.join(OUTPUT_PATH, "embeddings")
 
 spark = SparkSession.builder \
     .appName("DocumentRetrieval") \
+    .master("local[*]")\
+    .config("spark.driver.bindAddress", "127.0.0.1")\
+    .config("spark.driver.host", "127.0.0.1")\
     .getOrCreate()
 
 embeddings_df = spark.read.parquet(EMBEDDINGS_PATH)
@@ -33,6 +38,11 @@ results = retrieve(
     top_k=3
 )
 
+answer = generate_recipe(
+    query=query,
+    retrieved_chunks=results)
+
+print(answer)
 
 for result in results:
     print("\nScore:", result["score"])

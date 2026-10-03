@@ -12,3 +12,6 @@ data/output/
 
 # IDE
 .idea/
+
+#secrets
+.env
