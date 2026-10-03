@@ -112,12 +112,12 @@ def main():
           f"chunks from the same PDF share the same document_id, "
           f"text looks sensible, and there are no empty chunks.")
 
-    chunks_df.select(
-        "document_id",
-        "file_path",
-        "chunk_id",
-        "text"
-    ).show(10, truncate=True)
+    # chunks_df.select(
+    #     "document_id",
+    #     "file_path",
+    #     "chunk_id",
+    #     "text"
+    # ).show(10, truncate=True)
     # TRUNCATE 100
 
     # # 1.10 KZ here temp turned off

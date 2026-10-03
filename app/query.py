@@ -44,8 +44,9 @@ answer = generate_recipe(
 
 print(answer)
 
-for result in results:
-    print("\nScore:", result["score"])
-    print("File:", result["file_path"])
-    print("Chunk:", result["chunk_id"])
-    print("Text:", result["text"])
+# just for chunk testing
+# for result in results:
+#     print("\nScore:", result["score"])
+#     print("File:", result["file_path"])
+#     print("Chunk:", result["chunk_id"])
+#     print("Text:", result["text"])
