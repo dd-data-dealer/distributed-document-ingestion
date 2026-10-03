@@ -1,3 +1,3 @@
 [pytest]
-pythonpath = pdf-pipeline-w1-t1
-testpaths = pdf-pipeline-w1-t1/tests
+pythonpath = .
+testpaths = tests

@@ -35,7 +35,7 @@ query = "Jaki posiłek zawiera kurczaka?"
 results = retrieve(
     query=query,
     chunks=chunks,
-    top_k=3
+    top_k=5
 )
 
 answer = generate_recipe(
