@@ -3,7 +3,7 @@ from typing import Iterator
 import pandas as pd
 import hashlib
 
-def chunk_text(text, chunk_size=600, overlap=75) -> list[str]:
+def chunk_text(text, chunk_size=400, overlap=60) -> list[str]:
 
     # 1. text must actually be usable
     if not text or not text.strip():
