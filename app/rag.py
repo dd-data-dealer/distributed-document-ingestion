@@ -24,8 +24,16 @@ information, calculations, recommendations, and unrelated text.
 
 Find the 3 recipes in the context that best answers the user's request.
 
+Treat dietary restrictions, excluded ingredients, allergies,
+and explicitly requested ingredients as mandatory constraints.
+
+Before selecting a recipe:
+- Check its ingredients against all user constraints.
+- Exclude recipes containing forbidden ingredients.
+
 Return ONLY those recipes.
-If you find less then 3 recipes, provide maximum number of available recipes following below instruction.
+If you find less then 3 recipes, provide maximum number of available recipes following above restrictions 
+and below instruction.
 
 Preserve information from the source recipe and include:
 - recipe name

@@ -18,11 +18,15 @@ def get_model():
             device="cpu")
 
     return _model
+# 12 oct prefix added for intfloat/multilingual-e5-small
+def embed_texts(texts: list[str], prefix: str = "passage"):
+    if prefix not in ("passage", "query"):
+        raise ValueError("prefix must be 'passage' or 'query'")
 
-def embed_texts(texts: list[str]):
     model = get_model()
+
     embeddings = model.encode(
-        texts,
+        [f"{prefix}: {text}" for text in texts],
         batch_size=32,
         normalize_embeddings=True,
         show_progress_bar=False,

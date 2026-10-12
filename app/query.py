@@ -30,7 +30,7 @@ chunks = [
 ]
 
 
-query = "Jaki posiłek zawiera kurczaka?"
+query = "Jaki posiłek nie zawiera nabiału?"
 
 results = retrieve(
     query=query,
@@ -45,8 +45,8 @@ answer = generate_recipe(
 print(answer)
 
 # just for chunk testing
-# for result in results:
-#     print("\nScore:", result["score"])
-#     print("File:", result["file_path"])
-#     print("Chunk:", result["chunk_id"])
-#     print("Text:", result["text"])
+for result in results:
+    print("\nScore:", result["score"])
+    print("File:", result["file_path"])
+    print("Chunk:", result["chunk_id"])
+    print("Text:", result["text"])

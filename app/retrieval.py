@@ -13,7 +13,10 @@ def cosine_similarity(vector_a, vector_b):
 
 
 def retrieve(query, chunks, top_k=3):
-    query_embedding = embed_texts([query])[0]
+    # old
+    # query_embedding = embed_texts([query])[0]
+    # KZ 12 Oct updated to get prefix
+    query_embedding = embed_texts([query], prefix="query")[0]
 
     scored_chunks = []
 
