@@ -1,0 +1,24 @@
+plan:
+
+Day 1 — Improve retrieval quality
+Highest priority
+- Inspect the top 5 retrieved chunks for different queries.
+- Fix overly long chunks and recipes split across chunk boundaries.
+- Improve handling of exclusion queries such as "bez nabiału".
+- Consider metadata filtering for ingredients rather than relying on embeddings alone.
+- Compare retrieval results before and after changes.
+Deliverable: Retrieval returns relevant, complete recipe contexts.
+
+
+
+SUN
+18
+OCT
+
+Day 2 — Make RAG reliable
+- Refine generate_recipe() so it uses only retrieved evidence.
+- Handle requests for multiple recipes, exclusions, and ingredient substitutions.
+- Define behavior when no recipe meets the criteria.
+- Add tests for hallucinations, contradictory ingredients, and empty retrieval.
+- Evaluate answers against a small set of expected results.
+Deliverable: A tested RAG workflow that answers dietary queries accurately.
